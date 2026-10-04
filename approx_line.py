@@ -104,14 +104,6 @@ class Network:
     input:  np.ndarray
     output: np.ndarray
 
-
-class Network:
-    layers: list[Layer]
-    n_in:   int
-    n_out:  int
-    input:  np.ndarray
-    output: np.ndarray
-
     def __init__(self, layer_sizes: list[int], learning_rate: float = 0.01):
         if len(layer_sizes) < 2:
             raise ValueError("Network must contain input and output layers")
