@@ -104,41 +104,33 @@ class Network:
     input:  np.ndarray
     output: np.ndarray
 
-    def __init__(self, layers: list[Layer], n_in: int, n_out: int):
-        if len(layers) == 0:
-            raise ValueError("Network must contain at least one layer")
 
-        # network input must match first layer input
-        if layers[0].weights.shape[1] != n_in:
-            raise ValueError(
-                f"Network input size {n_in} does not match "
-                f"first layer input size {layers[0].weights.shape[1]}"
+class Network:
+    layers: list[Layer]
+    n_in:   int
+    n_out:  int
+    input:  np.ndarray
+    output: np.ndarray
+
+    def __init__(self, layer_sizes: list[int], learning_rate: float = 0.01):
+        if len(layer_sizes) < 2:
+            raise ValueError("Network must contain input and output layers")
+
+        if any(size <= 0 for size in layer_sizes):
+            raise ValueError("Layer sizes must be positive")
+
+        self.n_in  = layer_sizes[0]
+        self.n_out = layer_sizes[-1]
+
+        self.layers = []
+
+        for idx in range(len(layer_sizes) - 1):
+            self.layers.append(
+                Layer(layer_sizes[idx], layer_sizes[idx + 1], learning_rate)
             )
 
-        # check connections between neighboring layers
-        for idx in range(1, len(layers)):
-            prev_n_out = layers[idx - 1].weights.shape[0]
-            curr_n_in  = layers[idx].weights.shape[1]
-
-            if prev_n_out != curr_n_in:
-                raise ValueError(
-                    f"Incompatible layers {idx - 1} and {idx}: "
-                    f"{prev_n_out} != {curr_n_in}"
-                )
-
-        # last layer output must match network output
-        if layers[-1].weights.shape[0] != n_out:
-            raise ValueError(
-                f"Network output size {n_out} does not match "
-                f"last layer output size {layers[-1].weights.shape[0]}"
-            )
-        
-        # initialisation
-        self.layers = layers
-        self.n_in   = n_in
-        self.n_out  = n_out
-        self.input  = np.zeros(n_in)
-        self.output = np.zeros(n_out)
+        self.input  = np.zeros(self.n_in)
+        self.output = np.zeros(self.n_out)
 
     def n_layers(self) -> int:
         return len(self.layers)
@@ -239,6 +231,7 @@ def train(network: Network, train_inputs: np.ndarray, train_refs: np.ndarray) ->
             print(f"epoch {epoch+1:3d}: train loss = {epoch_loss:.6f}")
     
     print("=" * 60)
+    print()
 
 def validation(network: Network, control_inputs: np.ndarray, control_refs: np.ndarray) -> tuple[float, float, float, list[np.ndarray]]:
     total_loss = 0.0
@@ -270,13 +263,14 @@ def validation(network: Network, control_inputs: np.ndarray, control_refs: np.nd
 
 def stat(mean_loss, mean_a_error, mean_b_error, predictions: list[np.ndarray]) -> None:
     print("=" * 20, "CONTROL SET RESULTS", "=" * 19)
-
+    
     print(f"Samples:       {control_set}")
     print(f"Mean loss:     {mean_loss:.6f}")
     print(f"Mean error a:     {mean_a_error:.6f}")
     print(f"Mean error b:     {mean_b_error:.6f}")
 
     print("=" * 60)    
+    print()
 
 def print_predictions(predictions: list[np.ndarray], cnt: int = 10) -> None:
     print("=" * 25, "PREDICTIONS", "=" * 24)
@@ -302,27 +296,23 @@ def print_predictions(predictions: list[np.ndarray], cnt: int = 10) -> None:
         )
 
     print("=" * 82)
+    print()
 
 
 # START
 #===============================================================
 # approximate line parameters (y = ax + b) for given dot set
-# 7 (input) -> 5 (1 hidden layer) -> 3 (2 hidden layer) -> 2 (output)
 
 train_set   = 1000
 control_set = 200
 noise_std   = 0.2
 n_epochs    = 100
-input_dots  = 5
+input_dots  = 7
 
 train_inputs, train_refs, control_inputs, control_refs = generate_dataset(train_set, control_set, noise_std, input_dots)
 
-layer1 = Layer(input_dots, 5)
-layer2 = Layer(5, 3)
-layer3 = Layer(3, 2)
-network = Network([layer1, layer2, layer3], input_dots, 2)
+network = Network([input_dots, 5, 3, 2])
 
 train(network, train_inputs, train_refs)
 mean_loss, mean_a_error, mean_b_error, predictions = validation(network, control_inputs, control_refs)
 print_predictions(predictions, 20)
-
